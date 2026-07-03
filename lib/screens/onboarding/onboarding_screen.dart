@@ -21,14 +21,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'AI Surveillance',
       desc:
           'Real-time CCTV monitoring powered by YOLOv8. Automatically detects weapons, fights, and suspicious activity — no manual watching needed.',
-      iconColor: Color(0xFF7C3AED),
+      iconColor: AppColors.primary,
     ),
     _OnboardData(
       icon: Icons.groups_outlined,
       title: 'Crowd Detection',
       desc:
           'Smart crowd behavior analysis identifies overcrowding, panic movements, and abnormal gatherings before they escalate into emergencies.',
-      iconColor: Color(0xFF06D6A0),
+      iconColor: AppColors.accent,
     ),
     _OnboardData(
       icon: Icons.sos_rounded,

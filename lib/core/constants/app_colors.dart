@@ -1,17 +1,36 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color background    = Color(0xFF0D0D2B);
-  static const Color surface       = Color(0xFF13132D);
-  static const Color card          = Color(0xFF1A1A3E);
-  static const Color primary       = Color(0xFF7C3AED);
-  static const Color primaryLight  = Color(0xFFA855F7);
-  static const Color primaryDark   = Color(0xFF5B21B6);
-  static const Color accent        = Color(0xFF06D6A0);
+  // ── Backgrounds (Royal Navy Blue) ──────────────────────────────
+  static const Color background    = Color(0xFF0A1628);
+  static const Color surface       = Color(0xFF0D1F3C);
+  static const Color card          = Color(0xFF132040);
+
+  // ── Primary (Royal Gold) ───────────────────────────────────────
+  static const Color primary       = Color(0xFFC9A84C);
+  static const Color primaryLight  = Color(0xFFE8C76A);
+  static const Color primaryDark   = Color(0xFFA8862A);
+
+  // ── Accent (Royal Blue — lighter shade of the navy family) ─────
+  static const Color accent        = Color(0xFF4A7FC4);
   static const Color accentOrange  = Color(0xFFF59E0B);
+
+  // ── Gold aliases ────────────────────────────────────────────────
+  static const Color gold          = primary;
+  static const Color white         = Color(0xFFFFFFFF);
+
+  // ── Danger ─────────────────────────────────────────────────────
   static const Color danger        = Color(0xFFEF4444);
+
+  // ── Text ───────────────────────────────────────────────────────
   static const Color textPrimary   = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB4B4D4);
-  static const Color textMuted     = Color(0xFF6B6B8A);
-  static const Color border        = Color(0xFF2A2A5A);
+  static const Color textSecondary = Color(0xFFCBD5E1);
+  static const Color textMuted     = Color(0xFF64748B);
+
+  // ── Border ─────────────────────────────────────────────────────
+  static const Color border        = Color(0xFF1E3A5F);
+
+  // ── Navy Shades ────────────────────────────────────────────────
+  static const Color navyDark      = Color(0xFF060E1A);
+  static const Color navyMid       = Color(0xFF0F2847);
 }

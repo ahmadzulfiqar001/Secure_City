@@ -82,7 +82,7 @@ class _LogoPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [const Color(0xFF1E0A48), const Color(0xFF0A0820)],
+          colors: const [AppColors.navyMid, AppColors.navyDark],
         ).createShader(Rect.fromLTWH(0, 0, w, h)),
     );
 
@@ -251,7 +251,7 @@ class _LogoPainter extends CustomPainter {
     );
 
     // Pupil
-    canvas.drawCircle(c, r * 0.34, Paint()..color = const Color(0xFF0D0D2B));
+    canvas.drawCircle(c, r * 0.34, Paint()..color = AppColors.navyDark);
 
     // Highlight
     canvas.drawCircle(

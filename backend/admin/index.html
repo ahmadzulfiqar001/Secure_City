@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureCity — Admin Monitoring Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🛡</div>
+      <div>
+        <h1>SECURECITY</h1>
+        <span class="subtitle">Admin Monitoring &amp; Alert Management</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="status-pill" id="engine-status"><span class="dot"></span> Connecting…</span>
+      <span class="clock" id="clock"></span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- Live feed -->
+    <section class="card feed-card">
+      <div class="card-head">
+        <h2>Live Surveillance Feed</h2>
+        <span class="live-badge">● LIVE</span>
+      </div>
+      <div class="feed-wrap">
+        <img id="stream" src="/api/stream" alt="live feed" />
+      </div>
+      <div class="feed-controls">
+        <select id="camera-select" title="Active camera identity"></select>
+        <button id="btn-webcam" class="btn">Use Webcam</button>
+        <label class="btn btn-outline" for="video-upload">Upload Video</label>
+        <input type="file" id="video-upload" accept="video/*" hidden />
+        <button id="btn-demo" class="btn btn-outline">Inject Test Alert</button>
+      </div>
+    </section>
+
+    <!-- Stats + live alerts -->
+    <section class="side-col">
+      <div class="stats-row">
+        <div class="card stat"><span class="stat-val" id="stat-total">–</span><span class="stat-label">Total Alerts</span></div>
+        <div class="card stat"><span class="stat-val danger" id="stat-high">–</span><span class="stat-label">Critical</span></div>
+        <div class="card stat"><span class="stat-val" id="stat-risk">–</span><span class="stat-label">Risk Level</span></div>
+        <div class="card stat"><span class="stat-val accent" id="stat-persons">–</span><span class="stat-label">Persons In Frame</span></div>
+      </div>
+      <div class="card alerts-live">
+        <div class="card-head">
+          <h2>Live Alerts</h2>
+          <span class="ws-pill" id="ws-status">offline</span>
+        </div>
+        <ul id="live-alerts" class="live-list">
+          <li class="empty">Waiting for detections…</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- History table -->
+    <section class="card table-card">
+      <div class="card-head">
+        <h2>Alert History</h2>
+        <div class="table-actions">
+          <select id="filter-sev">
+            <option value="">All severities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <button id="btn-refresh" class="btn btn-outline">Refresh</button>
+          <button id="btn-clear" class="btn btn-danger">Clear All</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Time</th><th>Type</th><th>Camera</th><th>Severity</th><th>Details</th><th>Snapshot</th></tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- snapshot modal -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-box">
+      <img id="modal-img" src="" alt="snapshot" />
+      <button class="btn" id="modal-close">Close</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

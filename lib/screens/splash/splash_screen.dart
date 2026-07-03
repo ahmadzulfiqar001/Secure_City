@@ -91,13 +91,13 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Radial background
+          // Radial background — Navy Blue
           Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment.center,
                 radius: 0.9,
-                colors: [Color(0xFF1A0A3E), Color(0xFF0D0D2B), Color(0xFF050510)],
+                colors: [Color(0xFF0F2847), Color(0xFF0A1628), Color(0xFF060E1A)],
               ),
             ),
           ),
@@ -146,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Color(0xFF7C3AED), Color(0xFF06D6A0)],
+                            colors: [AppColors.primaryLight, AppColors.primaryDark],
                           ).createShader(bounds),
                           child: Text(
                             'CITY',
@@ -231,7 +231,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF7C3AED).withOpacity(0.04)
+      ..color = AppColors.primary.withOpacity(0.05)
       ..strokeWidth = 0.5;
     const step = 28.0;
     for (double x = 0; x < size.width; x += step) {

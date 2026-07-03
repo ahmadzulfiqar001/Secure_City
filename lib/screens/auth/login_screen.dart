@@ -38,6 +38,74 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showForgotPassword() {
+    final resetEmailCtrl = TextEditingController(text: _emailCtrl.text);
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Reset Password',
+                style: GoogleFonts.inter(
+                    color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(
+              'Enter your account email and we\'ll send a reset link.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: resetEmailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                labelText: 'Email Address',
+                labelStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13),
+                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted, size: 18),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (resetEmailCtrl.text.trim().isEmpty) return;
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Reset link sent to ${resetEmailCtrl.text.trim()}',
+                        style: GoogleFonts.inter()),
+                    backgroundColor: AppColors.primary,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text('Send Reset Link',
+                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: _showForgotPassword,
                             child: Text(
                               'Forgot Password?',
                               style: GoogleFonts.inter(

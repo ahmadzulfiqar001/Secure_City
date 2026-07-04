@@ -40,7 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _body() {
     switch (_tab) {
       case 0:
-        return DashboardScreen(store: _store, onSeeAllAlerts: () => setState(() => _tab = 1));
+        return DashboardScreen(
+          store: _store,
+          onSeeAllAlerts: () => setState(() => _tab = 1),
+          onOpenMap: () => setState(() => _tab = 2),
+          onOpenProfile: () => setState(() => _tab = 3),
+        );
       case 1:
         return AlertsScreen(store: _store);
       case 2:
@@ -48,7 +53,12 @@ class _HomeScreenState extends State<HomeScreen> {
       case 3:
         return ProfileScreen(store: _store);
       default:
-        return DashboardScreen(store: _store, onSeeAllAlerts: () => setState(() => _tab = 1));
+        return DashboardScreen(
+          store: _store,
+          onSeeAllAlerts: () => setState(() => _tab = 1),
+          onOpenMap: () => setState(() => _tab = 2),
+          onOpenProfile: () => setState(() => _tab = 3),
+        );
     }
   }
 

@@ -83,6 +83,29 @@ class AppDataStore extends ChangeNotifier {
     return 'LOW';
   }
 
+  int get offlineCameraCount => cameras.where((c) => !c.online).length;
+
+  int get todayAlertCount {
+    final now = DateTime.now();
+    return alerts
+        .where((a) => a.time.year == now.year && a.time.month == now.month && a.time.day == now.day)
+        .length;
+  }
+
+  /// A composite 0-100 city safety score derived from the current alert mix
+  /// and camera coverage — not a fixed number, it moves as real alerts/
+  /// cameras change.
+  int get safetyScore {
+    final medium = alerts.where((a) => a.severity == AlertSeverity.medium).length;
+    final low = alerts.where((a) => a.severity == AlertSeverity.low).length;
+    var score = 100 - (criticalCount * 12) - (medium * 5) - (low * 2);
+    if (cameras.isNotEmpty) {
+      final offlineRatio = offlineCameraCount / cameras.length;
+      score -= (offlineRatio * 15).round();
+    }
+    return score.clamp(0, 100);
+  }
+
   static const _eventPool = [
     _EventTemplate('Fight Detected', AlertSeverity.high, Icons.sports_kabaddi_outlined),
     _EventTemplate('Weapon Detected', AlertSeverity.high, Icons.warning_amber_rounded),

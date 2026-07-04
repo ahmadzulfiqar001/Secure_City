@@ -23,6 +23,12 @@ def _get_conn() -> sqlite3.Connection:
     return _conn
 
 
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, coltype: str) -> None:
+    existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+
+
 def init_db() -> None:
     with _lock:
         conn = _get_conn()
@@ -54,6 +60,11 @@ def init_db() -> None:
             )
             """
         )
+        # Migrations for columns added after the table first shipped.
+        _ensure_column(conn, "users", "verified", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "users", "otp_code", "TEXT")
+        _ensure_column(conn, "users", "otp_purpose", "TEXT")
+        _ensure_column(conn, "users", "otp_expires", "TEXT")
         conn.commit()
 
 
@@ -82,6 +93,53 @@ def get_user_by_id(user_id: int) -> dict | None:
     with _lock:
         row = _get_conn().execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     return dict(row) if row else None
+
+
+def set_otp(user_id: int, code: str, purpose: str, expires_iso: str) -> None:
+    with _lock:
+        _get_conn().execute(
+            "UPDATE users SET otp_code = ?, otp_purpose = ?, otp_expires = ? WHERE id = ?",
+            (code, purpose, expires_iso, user_id),
+        )
+        _get_conn().commit()
+
+
+def clear_otp(user_id: int) -> None:
+    with _lock:
+        _get_conn().execute(
+            "UPDATE users SET otp_code = NULL, otp_purpose = NULL, otp_expires = NULL WHERE id = ?",
+            (user_id,),
+        )
+        _get_conn().commit()
+
+
+def mark_verified(user_id: int) -> None:
+    with _lock:
+        _get_conn().execute("UPDATE users SET verified = 1 WHERE id = ?", (user_id,))
+        _get_conn().commit()
+
+
+def update_profile(user_id: int, name: str, phone: str) -> dict:
+    with _lock:
+        _get_conn().execute(
+            "UPDATE users SET name = ?, phone = ? WHERE id = ?", (name, phone, user_id)
+        )
+        _get_conn().commit()
+    return get_user_by_id(user_id)
+
+
+def update_password(user_id: int, password_hash: str) -> None:
+    with _lock:
+        _get_conn().execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id)
+        )
+        _get_conn().commit()
+
+
+def delete_user(user_id: int) -> None:
+    with _lock:
+        _get_conn().execute("DELETE FROM users WHERE id = ?", (user_id,))
+        _get_conn().commit()
 
 
 def insert_alert(

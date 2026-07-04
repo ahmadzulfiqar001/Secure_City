@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'core/constants/app_colors.dart';
+import 'core/navigation.dart';
 import 'core/theme/app_theme.dart';
 import 'screens/splash/splash_screen.dart';
 
@@ -10,7 +12,7 @@ void main() {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF13132D),
+      systemNavigationBarColor: AppColors.surface,
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
@@ -31,6 +33,7 @@ class SecureCityApp extends StatelessWidget {
     return MaterialApp(
       title: 'SecureCity',
       debugShowCheckedModeBanner: false,
+      navigatorKey: rootNavigatorKey,
       theme: AppTheme.darkTheme,
       home: const SplashScreen(),
     );

@@ -7,6 +7,7 @@ import asyncio
 import random
 import shutil
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
@@ -35,8 +36,39 @@ def startup() -> None:
 
 
 # ── auth ─────────────────────────────────────────────────────────────
+# NOTE ON OTP DELIVERY: there is no SMS/email gateway configured for this
+# prototype, so OTP codes are returned in the API response (`otp_debug`) and
+# printed to the server log instead of actually being texted/emailed. Wire a
+# real provider (Twilio, SendGrid, ...) into `_send_otp` when one is
+# available; nothing else about the verification flow needs to change.
+OTP_TTL_MINUTES = 10
+
+
 def _public_user(user: dict) -> dict:
-    return {"id": user["id"], "name": user["name"], "email": user["email"], "phone": user["phone"]}
+    return {
+        "id": user["id"],
+        "name": user["name"],
+        "email": user["email"],
+        "phone": user["phone"],
+        "verified": bool(user["verified"]),
+    }
+
+
+def _send_otp(user: dict, purpose: str) -> str:
+    code = f"{random.randint(0, 999999):06d}"
+    expires = (datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)).isoformat()
+    database.set_otp(user["id"], code, purpose, expires)
+    print(f"[DEV OTP] {purpose} code for {user['email']}: {code} (expires in {OTP_TTL_MINUTES} min)")
+    return code
+
+
+def _check_otp(user: dict, code: str, purpose: str) -> None:
+    if not user["otp_code"] or user["otp_purpose"] != purpose:
+        raise HTTPException(status_code=400, detail="No pending verification for this account")
+    if datetime.now(timezone.utc) > datetime.fromisoformat(user["otp_expires"]):
+        raise HTTPException(status_code=400, detail="This code has expired. Request a new one.")
+    if code.strip() != user["otp_code"]:
+        raise HTTPException(status_code=400, detail="Incorrect code")
 
 
 class RegisterBody(BaseModel):
@@ -65,6 +97,52 @@ class LoginBody(BaseModel):
     password: str
 
 
+class OtpBody(BaseModel):
+    email: str
+    code: str
+
+
+class EmailBody(BaseModel):
+    email: str
+
+
+class ResetPasswordBody(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _valid_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v
+
+
+class ChangePasswordBody(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _valid_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v
+
+
+class UpdateProfileBody(BaseModel):
+    name: str
+    phone: str
+
+
+def _get_user_or_404(email: str) -> dict:
+    user = database.get_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="No account with this email")
+    return user
+
+
 @app.post("/api/auth/register", status_code=201)
 def register(body: RegisterBody):
     if database.get_user_by_email(body.email):
@@ -72,8 +150,31 @@ def register(body: RegisterBody):
     user = database.create_user(
         body.name.strip(), body.email, body.phone.strip(), security.hash_password(body.password)
     )
+    otp = _send_otp(user, "verify")
+    return {
+        "user": _public_user(user),
+        "otp_debug": otp,
+        "message": "Verify your account with the code we generated (see otp_debug — no SMS gateway configured yet).",
+    }
+
+
+@app.post("/api/auth/verify-otp")
+def verify_otp(body: OtpBody):
+    user = _get_user_or_404(body.email)
+    _check_otp(user, body.code, "verify")
+    database.mark_verified(user["id"])
+    database.clear_otp(user["id"])
+    user = database.get_user_by_id(user["id"])
     token = security.create_access_token(user["id"], user["email"])
     return {"token": token, "user": _public_user(user)}
+
+
+@app.post("/api/auth/resend-otp")
+def resend_otp(body: EmailBody):
+    user = _get_user_or_404(body.email)
+    purpose = "reset" if user["verified"] else "verify"
+    otp = _send_otp(user, purpose)
+    return {"otp_debug": otp, "message": "A new code was generated (see otp_debug)."}
 
 
 @app.post("/api/auth/login")
@@ -85,12 +186,49 @@ def login(body: LoginBody):
     return {"token": token, "user": _public_user(user)}
 
 
+@app.post("/api/auth/forgot-password")
+def forgot_password(body: EmailBody):
+    user = _get_user_or_404(body.email)
+    otp = _send_otp(user, "reset")
+    return {"otp_debug": otp, "message": "Use this code to reset your password (see otp_debug)."}
+
+
+@app.post("/api/auth/reset-password")
+def reset_password(body: ResetPasswordBody):
+    user = _get_user_or_404(body.email)
+    _check_otp(user, body.code, "reset")
+    database.update_password(user["id"], security.hash_password(body.new_password))
+    database.clear_otp(user["id"])
+    return {"ok": True}
+
+
 @app.get("/api/auth/me")
 def me(user_id: int = Depends(security.get_current_user_id)):
     user = database.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return _public_user(user)
+
+
+@app.put("/api/auth/me")
+def update_me(body: UpdateProfileBody, user_id: int = Depends(security.get_current_user_id)):
+    user = database.update_profile(user_id, body.name.strip(), body.phone.strip())
+    return _public_user(user)
+
+
+@app.post("/api/auth/change-password")
+def change_password(body: ChangePasswordBody, user_id: int = Depends(security.get_current_user_id)):
+    user = database.get_user_by_id(user_id)
+    if not user or not security.verify_password(body.current_password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    database.update_password(user_id, security.hash_password(body.new_password))
+    return {"ok": True}
+
+
+@app.delete("/api/auth/me")
+def delete_me(user_id: int = Depends(security.get_current_user_id)):
+    database.delete_user(user_id)
+    return {"ok": True}
 
 
 # ── REST API ────────────────────────────────────────────────────────

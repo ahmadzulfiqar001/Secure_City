@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/logo_widget.dart';
 import '../home/home_screen.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passCtrl = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
+  bool _rememberMe = true;
 
   @override
   void dispose() {
@@ -30,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
+    authService.rememberMe = _rememberMe;
     try {
       await authService.login(email: _emailCtrl.text.trim(), password: _passCtrl.text);
       if (!mounted) return;
@@ -50,71 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showForgotPassword() {
-    final resetEmailCtrl = TextEditingController(text: _emailCtrl.text);
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Reset Password',
-                style: GoogleFonts.inter(
-                    color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text(
-              'Enter your account email and we\'ll send a reset link.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: resetEmailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                labelText: 'Email Address',
-                labelStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13),
-                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted, size: 18),
-                filled: true,
-                fillColor: AppColors.background,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (resetEmailCtrl.text.trim().isEmpty) return;
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Reset link sent to ${resetEmailCtrl.text.trim()}',
-                        style: GoogleFonts.inter()),
-                    backgroundColor: AppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: Text('Send Reset Link',
-                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()));
   }
 
   @override
@@ -223,20 +162,40 @@ class _LoginScreenState extends State<LoginScreen> {
                               v!.length < 6 ? 'Min 6 characters' : null,
                         ),
 
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
 
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: _showForgotPassword,
-                            child: Text(
-                              'Forgot Password?',
-                              style: GoogleFonts.inter(
-                                color: AppColors.primaryLight,
-                                fontSize: 13,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            InkWell(
+                              onTap: () => setState(() => _rememberMe = !_rememberMe),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                                    activeColor: AppColors.primary,
+                                    side: const BorderSide(color: AppColors.border),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('Remember Me',
+                                      style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13)),
+                                ],
                               ),
                             ),
-                          ),
+                            TextButton(
+                              onPressed: _showForgotPassword,
+                              child: Text(
+                                'Forgot Password?',
+                                style: GoogleFonts.inter(
+                                  color: AppColors.primaryLight,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: 20),

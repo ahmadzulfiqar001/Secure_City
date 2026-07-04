@@ -3,8 +3,6 @@ import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-import 'token_store.dart';
-
 /// Backend base URL. Android emulators can't reach the host machine via
 /// `localhost`, so we special-case that; every other target (web, Windows,
 /// iOS simulator) reaches the FastAPI dev server directly.
@@ -18,8 +16,14 @@ String get backendBaseUrl {
   return 'http://localhost:8000';
 }
 
-/// Thin wrapper around a single Dio instance shared by the whole app, with
-/// the stored JWT (if any) automatically attached to every request.
+/// Thin wrapper around a single Dio instance shared by the whole app.
+///
+/// Doesn't know about AuthService directly (that would be circular — every
+/// screen already depends on AuthService for the current user). Instead
+/// AuthService plugs itself in via [tokenProvider] (read synchronously, once
+/// per request) and [onUnauthorized] (called when a request that *did*
+/// carry a token comes back 401 — i.e. the session itself is invalid/expired,
+/// as opposed to a login/register attempt with the wrong credentials).
 class ApiClient {
   ApiClient._internal() {
     _dio = Dio(BaseOptions(
@@ -28,12 +32,19 @@ class ApiClient {
       receiveTimeout: const Duration(seconds: 8),
     ));
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await TokenStore.getToken();
+      onRequest: (options, handler) {
+        final token = tokenProvider?.call();
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
+      },
+      onError: (error, handler) {
+        final hadToken = error.requestOptions.headers.containsKey('Authorization');
+        if (error.response?.statusCode == 401 && hadToken) {
+          onUnauthorized?.call();
+        }
+        handler.next(error);
       },
     ));
   }
@@ -42,6 +53,9 @@ class ApiClient {
   late final Dio _dio;
 
   Dio get dio => _dio;
+
+  String? Function()? tokenProvider;
+  void Function()? onUnauthorized;
 }
 
 /// Turns a DioException into a short, user-presentable message.

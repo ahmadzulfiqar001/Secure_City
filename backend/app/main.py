@@ -9,13 +9,13 @@ import shutil
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
-from . import config, database
+from . import config, database, security
 from .detection.engine import engine
 
 app = FastAPI(title="SecureCity Backend", version="1.0.0")
@@ -32,6 +32,65 @@ app.add_middleware(
 def startup() -> None:
     database.init_db()
     engine.start()
+
+
+# ── auth ─────────────────────────────────────────────────────────────
+def _public_user(user: dict) -> dict:
+    return {"id": user["id"], "name": user["name"], "email": user["email"], "phone": user["phone"]}
+
+
+class RegisterBody(BaseModel):
+    name: str
+    email: str
+    phone: str
+    password: str
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Enter a valid email address")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def _valid_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v
+
+
+class LoginBody(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/auth/register", status_code=201)
+def register(body: RegisterBody):
+    if database.get_user_by_email(body.email):
+        raise HTTPException(status_code=409, detail="An account with this email already exists")
+    user = database.create_user(
+        body.name.strip(), body.email, body.phone.strip(), security.hash_password(body.password)
+    )
+    token = security.create_access_token(user["id"], user["email"])
+    return {"token": token, "user": _public_user(user)}
+
+
+@app.post("/api/auth/login")
+def login(body: LoginBody):
+    user = database.get_user_by_email(body.email)
+    if not user or not security.verify_password(body.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = security.create_access_token(user["id"], user["email"])
+    return {"token": token, "user": _public_user(user)}
+
+
+@app.get("/api/auth/me")
+def me(user_id: int = Depends(security.get_current_user_id)):
+    user = database.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return _public_user(user)
 
 
 # ── REST API ────────────────────────────────────────────────────────

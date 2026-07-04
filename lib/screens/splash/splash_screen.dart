@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/logo_widget.dart';
+import '../home/home_screen.dart';
 import '../onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -61,15 +63,18 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _runSequence() async {
+    final restoreSession = authService.init();
     await Future.delayed(const Duration(milliseconds: 400));
     _logoCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 900));
     _textCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 2200));
+    await restoreSession;
     if (!mounted) return;
+    final next = authService.isLoggedIn ? const HomeScreen() : const OnboardingScreen();
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const OnboardingScreen(),
+        pageBuilder: (_, __, ___) => next,
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 700),

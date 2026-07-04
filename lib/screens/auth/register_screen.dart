@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/logo_widget.dart';
 import '../home/home_screen.dart';
 
@@ -32,14 +33,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 1400));
-    if (!mounted) return;
-    setState(() => _loading = false);
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (_) => false,
-    );
+    try {
+      await authService.register(
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+        password: _passCtrl.text,
+      );
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (_) => false,
+      );
+    } catch (message) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$message', style: GoogleFonts.inter()),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

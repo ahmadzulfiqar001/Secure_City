@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/emergency_contact_model.dart';
 import '../../services/app_data_store.dart';
+import '../../services/auth_service.dart';
+import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final AppDataStore store;
@@ -81,6 +83,62 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Logout?',
+                style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text('You will need to sign in again to access your account.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+            const SizedBox(height: 20),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await authService.logout();
+                    if (!ctx.mounted) return;
+                    Navigator.pushAndRemoveUntil(
+                      ctx,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (_) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.danger,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('Logout', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+
   Widget _dialogField(TextEditingController ctrl, String label, IconData icon,
       {TextInputType? keyboardType, String? Function(String?)? validator}) {
     return TextFormField(
@@ -128,10 +186,10 @@ class ProfileScreen extends StatelessWidget {
                   child: const Icon(Icons.person, color: Colors.white, size: 44),
                 ),
                 const SizedBox(height: 12),
-                Text('Muhammad Ahmad',
+                Text(authService.user?['name'] as String? ?? 'SecureCity User',
                     style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text('FA23-BCS-051  •  SecureCity User',
+                Text(authService.user?['email'] as String? ?? '',
                     style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
                 const SizedBox(height: 28),
                 Container(
@@ -182,6 +240,21 @@ class ProfileScreen extends StatelessWidget {
                 _sectionHeader('Safety Preferences'),
                 const SizedBox(height: 12),
                 ...store.preferences.entries.map((e) => _prefTile(e.key, e.value)),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _confirmLogout(context),
+                    icon: const Icon(Icons.logout, size: 18, color: AppColors.danger),
+                    label: Text('Logout',
+                        style: GoogleFonts.inter(fontSize: 13, color: AppColors.danger, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.danger),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
               ]),
             );
           },

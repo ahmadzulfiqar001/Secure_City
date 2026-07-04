@@ -1,10 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:securecity/main.dart';
 
 void main() {
   testWidgets('SecureCity app boots to the splash screen then onboarding',
       (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+
     await tester.pumpWidget(const SecureCityApp());
 
     expect(find.text('SECURE'), findsOneWidget);

@@ -200,12 +200,12 @@ class DetectionEngine(threading.Thread):
         camera = config.get_camera(self.camera_id)
         h = frame.shape[0]
         overlay = frame.copy()
-        cv2.rectangle(overlay, (0, h - 28), (frame.shape[1], h), (20, 15, 13), -1)
+        cv2.rectangle(overlay, (0, h - 28), (frame.shape[1], h), (26, 14, 6), -1)  # navyDark #060E1A
         cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
         hud = (f"{camera['id']} {camera['name']}  |  "
                f"PERSONS: {self.person_count}  |  FPS: {self.fps:.1f}")
         cv2.putText(frame, hud, (10, h - 9), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.45, (212, 180, 180), 1, cv2.LINE_AA)
+                    0.45, (225, 213, 203), 1, cv2.LINE_AA)  # textSecondary #CBD5E1
         cv2.circle(frame, (frame.shape[1] - 18, h - 14), 5, COLOR_DANGER, -1)
 
     # ── placeholder frames when idle ────────────────────────────────
@@ -215,11 +215,11 @@ class DetectionEngine(threading.Thread):
 
     @staticmethod
     def _placeholder_jpeg(text: str) -> bytes:
-        img = np.full((360, 640, 3), (43, 13, 13), dtype=np.uint8)  # #0D0D2B
+        img = np.full((360, 640, 3), (40, 22, 10), dtype=np.uint8)  # background #0A1628
         for i, line in enumerate(text.split("\n")):
             size = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)[0]
             cv2.putText(img, line, ((640 - size[0]) // 2, 170 + i * 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (212, 180, 180), 1, cv2.LINE_AA)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (225, 213, 203), 1, cv2.LINE_AA)  # textSecondary #CBD5E1
         ok, jpeg = cv2.imencode(".jpg", img)
         return jpeg.tobytes() if ok else b""
 

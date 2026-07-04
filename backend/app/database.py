@@ -25,7 +25,8 @@ def _get_conn() -> sqlite3.Connection:
 
 def init_db() -> None:
     with _lock:
-        _get_conn().execute(
+        conn = _get_conn()
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS alerts (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +42,46 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                name          TEXT NOT NULL,
+                email         TEXT NOT NULL UNIQUE,
+                phone         TEXT,
+                password_hash TEXT NOT NULL,
+                created_at    TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+
+
+# ── users ────────────────────────────────────────────────────────────
+def create_user(name: str, email: str, phone: str, password_hash: str) -> dict:
+    ts = datetime.now(timezone.utc).isoformat()
+    with _lock:
+        cur = _get_conn().execute(
+            "INSERT INTO users (name, email, phone, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+            (name, email.lower().strip(), phone, password_hash, ts),
+        )
         _get_conn().commit()
+        user_id = cur.lastrowid
+    return get_user_by_id(user_id)
+
+
+def get_user_by_email(email: str) -> dict | None:
+    with _lock:
+        row = _get_conn().execute(
+            "SELECT * FROM users WHERE email = ?", (email.lower().strip(),)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> dict | None:
+    with _lock:
+        row = _get_conn().execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    return dict(row) if row else None
 
 
 def insert_alert(

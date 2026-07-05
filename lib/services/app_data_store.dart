@@ -273,14 +273,22 @@ class AppDataStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void triggerSOS() {
+  void triggerSOS({double? lat, double? lng, required bool reachedBackend, required bool smsOpened}) {
     final now = DateTime.now();
+    final where = (lat != null && lng != null)
+        ? 'at ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}'
+        : '(location unavailable)';
+    final body = [
+      'Triggered $where.',
+      reachedBackend ? 'Logged with the monitoring system.' : 'Could not reach the monitoring server.',
+      smsOpened ? 'SMS app opened for your emergency contacts.' : 'Could not open the SMS app.',
+    ].join(' ');
     notifications.insert(
       0,
       NotificationModel(
         id: 'N${_idCounter++}',
         title: 'SOS Activated',
-        body: 'Your live location was shared with all emergency contacts.',
+        body: body,
         time: now,
         type: NotificationType.safety,
         icon: Icons.sos_rounded,

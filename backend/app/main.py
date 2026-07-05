@@ -315,6 +315,30 @@ def demo_alert():
     return alert
 
 
+# ── emergency SOS (Flutter app's panic button) ──────────────────────
+class SosBody(BaseModel):
+    lat: float
+    lng: float
+
+
+@app.post("/api/sos", status_code=201)
+def trigger_sos(body: SosBody, user_id: int = Depends(security.get_current_user_id)):
+    """Logs a citizen's SOS as a real high-severity alert so it shows up
+    immediately in the admin dashboard's live feed and history — the same
+    pipeline the AI detection engine writes to, just triggered by a person
+    instead of a camera."""
+    user = database.get_user_by_id(user_id)
+    name = user["name"] if user else "Unknown user"
+    camera = {"id": "SOS", "name": f"SOS — {name}", "lat": body.lat, "lng": body.lng}
+    alert = database.insert_alert(
+        "SOS Triggered",
+        "high",
+        camera,
+        details={"user_id": user_id, "user_name": name, "phone": user["phone"] if user else None},
+    )
+    return alert
+
+
 # ── live MJPEG stream ───────────────────────────────────────────────
 async def mjpeg_generator():
     boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"

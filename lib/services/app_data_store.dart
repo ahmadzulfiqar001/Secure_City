@@ -28,13 +28,26 @@ class AppDataStore extends ChangeNotifier {
   int _idCounter = 100;
 
   final List<CameraModel> cameras = [
-    const CameraModel(id: 'CAM-01', label: 'Saddar Market', point: LatLng(33.7294, 73.0931)),
-    const CameraModel(id: 'CAM-02', label: 'Raja Bazaar', point: LatLng(33.7296, 73.0880)),
-    const CameraModel(id: 'CAM-03', label: 'Blue Area', point: LatLng(33.7215, 73.0433)),
-    const CameraModel(id: 'CAM-04', label: 'F-10 Markaz', point: LatLng(33.7080, 73.0479)),
-    const CameraModel(id: 'CAM-05', label: 'Centaurus Mall', point: LatLng(33.6938, 73.0651)),
-    const CameraModel(id: 'CAM-06', label: 'Liaquat Bagh', point: LatLng(33.6844, 73.0479)),
-    const CameraModel(id: 'CAM-07', label: 'G-9 Markaz', point: LatLng(33.6996, 73.0362), online: false),
+    // Rawalpindi / Islamabad
+    const CameraModel(id: 'CAM-01', label: 'Saddar Market, Rawalpindi', point: LatLng(33.7294, 73.0931)),
+    const CameraModel(id: 'CAM-02', label: 'Raja Bazaar, Rawalpindi', point: LatLng(33.7296, 73.0880)),
+    const CameraModel(id: 'CAM-03', label: 'Blue Area, Islamabad', point: LatLng(33.7215, 73.0433)),
+    const CameraModel(id: 'CAM-04', label: 'F-10 Markaz, Islamabad', point: LatLng(33.7080, 73.0479)),
+    const CameraModel(id: 'CAM-05', label: 'Centaurus Mall, Islamabad', point: LatLng(33.6938, 73.0651)),
+    const CameraModel(id: 'CAM-06', label: 'Liaquat Bagh, Rawalpindi', point: LatLng(33.6844, 73.0479)),
+    const CameraModel(id: 'CAM-07', label: 'G-9 Markaz, Islamabad', point: LatLng(33.6996, 73.0362), online: false),
+    // Lahore
+    const CameraModel(id: 'CAM-08', label: 'Mall Road, Lahore', point: LatLng(31.5497, 74.3436)),
+    const CameraModel(id: 'CAM-09', label: 'Liberty Market, Lahore', point: LatLng(31.5085, 74.3436)),
+    // Karachi
+    const CameraModel(id: 'CAM-10', label: 'Saddar Town, Karachi', point: LatLng(24.8608, 67.0104)),
+    const CameraModel(id: 'CAM-11', label: 'Clifton Beach, Karachi', point: LatLng(24.8138, 67.0299)),
+    // Other major cities
+    const CameraModel(id: 'CAM-12', label: 'Qissa Khwani Bazaar, Peshawar', point: LatLng(34.0083, 71.5787)),
+    const CameraModel(id: 'CAM-13', label: 'Liaquat Bazaar, Quetta', point: LatLng(30.1798, 66.9750)),
+    const CameraModel(id: 'CAM-14', label: 'Ghanta Ghar, Multan', point: LatLng(30.1978, 71.4697)),
+    const CameraModel(id: 'CAM-15', label: 'Clock Tower, Faisalabad', point: LatLng(31.4187, 73.0791), online: false),
+    const CameraModel(id: 'CAM-16', label: 'Cantt Area, Sialkot', point: LatLng(32.4927, 74.5310)),
   ];
 
   final List<AlertModel> alerts = [];

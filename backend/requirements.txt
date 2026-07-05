@@ -6,3 +6,4 @@ numpy>=1.26
 python-multipart>=0.0.9
 passlib[bcrypt]>=1.7
 pyjwt>=2.8
+python-dotenv>=1.0

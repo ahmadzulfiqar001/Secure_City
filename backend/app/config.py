@@ -34,12 +34,26 @@ ALERT_COOLDOWN = 20.0        # seconds between repeated alerts of the same type
 
 # ── Cameras (must stay in sync with the Flutter app's demo pins) ───
 CAMERAS = [
-    {"id": "CAM-01", "name": "Saddar Market",  "lat": 33.7294, "lng": 73.0931},
-    {"id": "CAM-02", "name": "Raja Bazaar",    "lat": 33.7296, "lng": 73.0880},
-    {"id": "CAM-03", "name": "Blue Area",      "lat": 33.7215, "lng": 73.0433},
-    {"id": "CAM-04", "name": "F-10 Markaz",    "lat": 33.7080, "lng": 73.0479},
-    {"id": "CAM-05", "name": "Centaurus Mall", "lat": 33.6938, "lng": 73.0651},
-    {"id": "CAM-06", "name": "Liaquat Bagh",   "lat": 33.6844, "lng": 73.0479},
+    # Rawalpindi / Islamabad
+    {"id": "CAM-01", "name": "Saddar Market, Rawalpindi",         "lat": 33.7294, "lng": 73.0931},
+    {"id": "CAM-02", "name": "Raja Bazaar, Rawalpindi",           "lat": 33.7296, "lng": 73.0880},
+    {"id": "CAM-03", "name": "Blue Area, Islamabad",              "lat": 33.7215, "lng": 73.0433},
+    {"id": "CAM-04", "name": "F-10 Markaz, Islamabad",            "lat": 33.7080, "lng": 73.0479},
+    {"id": "CAM-05", "name": "Centaurus Mall, Islamabad",         "lat": 33.6938, "lng": 73.0651},
+    {"id": "CAM-06", "name": "Liaquat Bagh, Rawalpindi",          "lat": 33.6844, "lng": 73.0479},
+    {"id": "CAM-07", "name": "G-9 Markaz, Islamabad",             "lat": 33.6996, "lng": 73.0362},
+    # Lahore
+    {"id": "CAM-08", "name": "Mall Road, Lahore",                 "lat": 31.5497, "lng": 74.3436},
+    {"id": "CAM-09", "name": "Liberty Market, Lahore",            "lat": 31.5085, "lng": 74.3436},
+    # Karachi
+    {"id": "CAM-10", "name": "Saddar Town, Karachi",              "lat": 24.8608, "lng": 67.0104},
+    {"id": "CAM-11", "name": "Clifton Beach, Karachi",            "lat": 24.8138, "lng": 67.0299},
+    # Other major cities
+    {"id": "CAM-12", "name": "Qissa Khwani Bazaar, Peshawar",     "lat": 34.0083, "lng": 71.5787},
+    {"id": "CAM-13", "name": "Liaquat Bazaar, Quetta",            "lat": 30.1798, "lng": 66.9750},
+    {"id": "CAM-14", "name": "Ghanta Ghar, Multan",               "lat": 30.1978, "lng": 71.4697},
+    {"id": "CAM-15", "name": "Clock Tower, Faisalabad",           "lat": 31.4187, "lng": 73.0791},
+    {"id": "CAM-16", "name": "Cantt Area, Sialkot",               "lat": 32.4927, "lng": 74.5310},
 ]
 DEFAULT_CAMERA_ID = "CAM-01"
 

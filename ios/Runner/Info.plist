@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SecureCity uses your location to center the safety map on you and to share it during an SOS.</string>
 </dict>
 </plist>

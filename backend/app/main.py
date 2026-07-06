@@ -231,6 +231,41 @@ def delete_me(user_id: int = Depends(security.get_current_user_id)):
     return {"ok": True}
 
 
+# ── emergency contacts (Profile API) ─────────────────────────────────
+class ContactBody(BaseModel):
+    name: str
+    relation: str
+    phone: str
+
+
+@app.get("/api/contacts")
+def list_contacts(user_id: int = Depends(security.get_current_user_id)):
+    return database.get_contacts(user_id)
+
+
+@app.post("/api/contacts", status_code=201)
+def create_contact(body: ContactBody, user_id: int = Depends(security.get_current_user_id)):
+    return database.add_contact(user_id, body.name.strip(), body.relation.strip(), body.phone.strip())
+
+
+@app.delete("/api/contacts/{contact_id}")
+def remove_contact(contact_id: int, user_id: int = Depends(security.get_current_user_id)):
+    if not database.delete_contact(user_id, contact_id):
+        raise HTTPException(status_code=404, detail="Contact not found")
+    return {"deleted": True}
+
+
+# ── safety preferences (Settings API) ────────────────────────────────
+@app.get("/api/preferences")
+def get_preferences(user_id: int = Depends(security.get_current_user_id)):
+    return database.get_preferences(user_id)
+
+
+@app.put("/api/preferences")
+def update_preferences(body: dict[str, bool], user_id: int = Depends(security.get_current_user_id)):
+    return database.update_preferences(user_id, body)
+
+
 # ── REST API ────────────────────────────────────────────────────────
 @app.get("/api/health")
 def health():
@@ -242,6 +277,11 @@ def stats():
     return {**database.get_stats(), **engine.status()}
 
 
+@app.get("/api/analytics")
+def analytics():
+    return database.get_analytics()
+
+
 @app.get("/api/alerts")
 def alerts(limit: int = 50, severity: str | None = None, since_id: int | None = None):
     return database.get_alerts(limit=limit, severity=severity, since_id=since_id)
@@ -251,6 +291,29 @@ def alerts(limit: int = 50, severity: str | None = None, since_id: int | None = 
 def clear_alerts():
     database.clear_alerts()
     return {"cleared": True}
+
+
+@app.patch("/api/alerts/{alert_id}/acknowledge")
+def acknowledge_alert(alert_id: int):
+    alert = database.acknowledge_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
+@app.patch("/api/alerts/{alert_id}/resolve")
+def resolve_alert(alert_id: int):
+    alert = database.resolve_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
+@app.delete("/api/alerts/{alert_id}")
+def delete_alert(alert_id: int):
+    if not database.delete_alert(alert_id):
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return {"deleted": True}
 
 
 @app.get("/api/cameras")

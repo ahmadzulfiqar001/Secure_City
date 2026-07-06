@@ -16,71 +16,82 @@ class ProfileScreen extends StatelessWidget {
     final relationCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool saving = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: formKey,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('Add Emergency Contact',
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 18),
-              _dialogField(nameCtrl, 'Full Name', Icons.person_outline,
-                  validator: (v) => v!.isEmpty ? 'Name is required' : null),
-              const SizedBox(height: 12),
-              _dialogField(relationCtrl, 'Relation (e.g. Sister)', Icons.family_restroom_outlined,
-                  validator: (v) => v!.isEmpty ? 'Relation is required' : null),
-              const SizedBox(height: 12),
-              _dialogField(phoneCtrl, 'Phone Number', Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                  validator: (v) => v!.isEmpty ? 'Phone is required' : null),
-              const SizedBox(height: 20),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textMuted,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setDialogState) {
+        return Dialog(
+          backgroundColor: AppColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text('Add Emergency Contact',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 18),
+                _dialogField(nameCtrl, 'Full Name', Icons.person_outline,
+                    validator: (v) => v!.isEmpty ? 'Name is required' : null),
+                const SizedBox(height: 12),
+                _dialogField(relationCtrl, 'Relation (e.g. Sister)', Icons.family_restroom_outlined,
+                    validator: (v) => v!.isEmpty ? 'Relation is required' : null),
+                const SizedBox(height: 12),
+                _dialogField(phoneCtrl, 'Phone Number', Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                    validator: (v) => v!.isEmpty ? 'Phone is required' : null),
+                const SizedBox(height: 20),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: saving ? null : () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textMuted,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Cancel'),
                     ),
-                    child: const Text('Cancel'),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (!formKey.currentState!.validate()) return;
-                      store.addContact(EmergencyContact(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        name: nameCtrl.text.trim(),
-                        relation: relationCtrl.text.trim(),
-                        phone: phoneCtrl.text.trim(),
-                        icon: Icons.person_outline,
-                        color: AppColors.accent,
-                      ));
-                      Navigator.pop(ctx);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              setDialogState(() => saving = true);
+                              try {
+                                await store.addContact(
+                                  name: nameCtrl.text.trim(),
+                                  relation: relationCtrl.text.trim(),
+                                  phone: phoneCtrl.text.trim(),
+                                );
+                                if (ctx.mounted) Navigator.pop(ctx);
+                              } catch (e) {
+                                setDialogState(() => saving = false);
+                                if (ctx.mounted) _showError(ctx, e);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: saving
+                          ? const SizedBox(
+                              width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text('Add', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
                     ),
-                    child: Text('Add', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
                   ),
-                ),
+                ]),
               ]),
-            ]),
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 

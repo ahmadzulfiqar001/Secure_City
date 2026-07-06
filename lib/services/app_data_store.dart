@@ -1,31 +1,47 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/alert_model.dart';
 import '../models/camera_model.dart';
 import '../models/emergency_contact_model.dart';
 import '../models/notification_model.dart';
+import 'api_client.dart';
+import 'local_notification_service.dart';
 
 /// Single in-memory source of truth for the app.
 ///
-/// Simulates a live monitoring feed (new alerts/notifications arrive on a
-/// timer) so the UI reflects a running surveillance system instead of a
-/// frozen mock. Everything downstream (dashboard, alerts, notifications,
-/// map, profile) reads from and mutates this one store.
+/// Alerts are real: fetched from the backend's `/api/alerts` on startup and
+/// then streamed live over `/ws/alerts` — the same pipeline the AI detection
+/// engine and the admin dashboard use. If the backend is unreachable the
+/// list simply stays empty (and a reconnect keeps retrying) rather than
+/// falling back to invented data.
 class AppDataStore extends ChangeNotifier {
   AppDataStore() {
-    _seed();
-    _liveFeedTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      _tick();
-    });
+    _loadInitialAlerts();
+    _connectWebSocket();
+    _loadContacts();
+    _loadPreferences();
+    notifications.add(NotificationModel(
+      id: 'N0',
+      title: 'Safety Tip',
+      body: 'Enable Night Mode Alerts for extra protection after 9 PM.',
+      time: DateTime.now(),
+      type: NotificationType.safety,
+      icon: Icons.shield_outlined,
+      read: true,
+    ));
   }
 
-  final _rng = Random();
-  late final Timer _liveFeedTimer;
-  int _idCounter = 100;
+  int _idCounter = 1;
+  WebSocketChannel? _channel;
+  bool _disposed = false;
+  bool _backendReachable = false;
+
+  bool get backendReachable => _backendReachable;
 
   final List<CameraModel> cameras = [
     // Rawalpindi / Islamabad
@@ -52,33 +68,12 @@ class AppDataStore extends ChangeNotifier {
 
   final List<AlertModel> alerts = [];
   final List<NotificationModel> notifications = [];
-  final List<EmergencyContact> contacts = [
-    const EmergencyContact(
-      id: 'c1',
-      name: 'Fatima Khan',
-      relation: 'Mother',
-      phone: '+92 300 1234567',
-      icon: Icons.favorite_outline,
-      color: Color(0xFFEF4444),
-    ),
-    const EmergencyContact(
-      id: 'c2',
-      name: 'Ahmed Khan',
-      relation: 'Brother',
-      phone: '+92 301 7654321',
-      icon: Icons.person_outline,
-      color: Color(0xFF4A7FC4),
-    ),
-    const EmergencyContact(
-      id: 'c3',
-      name: 'Rescue 1122',
-      relation: 'Emergency Service',
-      phone: '1122',
-      icon: Icons.local_police_outlined,
-      color: Color(0xFFF59E0B),
-    ),
-  ];
 
+  /// Emergency contacts and safety preferences are persisted server-side,
+  /// tied to the logged-in user (see /api/contacts, /api/preferences) — they
+  /// used to be local-only and vanished on logout/reinstall, which defeats
+  /// the point given SOS depends on them.
+  final List<EmergencyContact> contacts = [];
   final Map<String, bool> preferences = {
     'Avoid Isolated Areas': true,
     'Prefer Crowded Routes': true,
@@ -119,111 +114,75 @@ class AppDataStore extends ChangeNotifier {
     return score.clamp(0, 100);
   }
 
-  static const _eventPool = [
-    _EventTemplate('Fight Detected', AlertSeverity.high, Icons.sports_kabaddi_outlined),
-    _EventTemplate('Weapon Detected', AlertSeverity.high, Icons.warning_amber_rounded),
-    _EventTemplate('Crowd Anomaly', AlertSeverity.medium, Icons.groups_outlined),
-    _EventTemplate('Panic Movement', AlertSeverity.medium, Icons.directions_run),
-    _EventTemplate('Suspicious Activity', AlertSeverity.low, Icons.visibility_outlined),
-    _EventTemplate('Overcrowding', AlertSeverity.low, Icons.people_outlined),
-  ];
-
-  void _seed() {
-    final now = DateTime.now();
-    final seeds = [
-      (0, 'Fight Detected', AlertSeverity.high, Icons.sports_kabaddi_outlined, 2),
-      (2, 'Crowd Anomaly', AlertSeverity.medium, Icons.groups_outlined, 15),
-      (1, 'Weapon Detected', AlertSeverity.high, Icons.warning_amber_rounded, 42),
-      (3, 'Suspicious Activity', AlertSeverity.low, Icons.visibility_outlined, 60),
-      (4, 'Panic Movement', AlertSeverity.medium, Icons.directions_run, 120),
-      (5, 'Overcrowding', AlertSeverity.low, Icons.people_outlined, 180),
-    ];
-    for (final s in seeds) {
-      final cam = cameras[s.$1];
-      alerts.add(AlertModel(
-        id: 'A${_idCounter++}',
-        type: s.$2,
-        location: cam.label,
-        loc: cam.point,
-        time: now.subtract(Duration(minutes: s.$5)),
-        severity: s.$3,
-        icon: s.$4,
-      ));
+  // ── real alerts: fetch + live WebSocket feed ────────────────────────
+  Future<void> _loadInitialAlerts() async {
+    try {
+      final res = await ApiClient.instance.dio.get('/api/alerts', queryParameters: {'limit': 60});
+      final list = (res.data as List).map((j) => AlertModel.fromJson(j as Map<String, dynamic>)).toList();
+      alerts
+        ..clear()
+        ..addAll(list);
+      _backendReachable = true;
+      notifyListeners();
+    } catch (_) {
+      _backendReachable = false;
+      notifyListeners();
     }
-
-    notifications.addAll([
-      NotificationModel(
-        id: 'N${_idCounter++}',
-        title: 'Fight Detected',
-        body: 'High severity event flagged at Saddar Market.',
-        time: now.subtract(const Duration(minutes: 2)),
-        type: NotificationType.alert,
-        icon: Icons.sports_kabaddi_outlined,
-      ),
-      NotificationModel(
-        id: 'N${_idCounter++}',
-        title: 'Weapon Detected',
-        body: 'High severity event flagged at Raja Bazaar.',
-        time: now.subtract(const Duration(minutes: 42)),
-        type: NotificationType.alert,
-        icon: Icons.warning_amber_rounded,
-      ),
-      NotificationModel(
-        id: 'N${_idCounter++}',
-        title: 'Safety Tip',
-        body: 'Enable Night Mode Alerts for extra protection after 9 PM.',
-        time: now.subtract(const Duration(hours: 5)),
-        type: NotificationType.safety,
-        icon: Icons.shield_outlined,
-        read: true,
-      ),
-      NotificationModel(
-        id: 'N${_idCounter++}',
-        title: 'System Update',
-        body: 'CAM-07 (G-9 Markaz) went offline for maintenance.',
-        time: now.subtract(const Duration(hours: 9)),
-        type: NotificationType.system,
-        icon: Icons.videocam_off_outlined,
-        read: true,
-      ),
-    ]);
   }
 
-  void _tick() {
-    // ~55% chance every tick that the monitoring pipeline reports a new event.
-    if (_rng.nextDouble() > 0.55) return;
+  void _connectWebSocket() {
+    if (_disposed) return;
+    try {
+      final wsUrl = backendBaseUrl.replaceFirst(RegExp(r'^http'), 'ws');
+      _channel = WebSocketChannel.connect(Uri.parse('$wsUrl/ws/alerts'));
+      _channel!.stream.listen(
+        _onAlertMessage,
+        onError: (_) => _scheduleReconnect(),
+        onDone: () => _scheduleReconnect(),
+        cancelOnError: true,
+      );
+      _backendReachable = true;
+    } catch (_) {
+      _scheduleReconnect();
+    }
+  }
 
-    final template = _eventPool[_rng.nextInt(_eventPool.length)];
-    final onlineCams = cameras.where((c) => c.online).toList();
-    final cam = onlineCams[_rng.nextInt(onlineCams.length)];
-    final now = DateTime.now();
-
-    final alert = AlertModel(
-      id: 'A${_idCounter++}',
-      type: template.type,
-      location: cam.label,
-      loc: cam.point,
-      time: now,
-      severity: template.severity,
-      icon: template.icon,
-    );
-    alerts.insert(0, alert);
-    if (alerts.length > 40) alerts.removeLast();
-
-    notifications.insert(
-      0,
-      NotificationModel(
-        id: 'N${_idCounter++}',
-        title: template.type,
-        body: '${_severityLabel(template.severity)} severity event flagged at ${cam.label}.',
-        time: now,
-        type: NotificationType.alert,
-        icon: template.icon,
-      ),
-    );
-    if (notifications.length > 40) notifications.removeLast();
-
+  void _scheduleReconnect() {
+    if (_disposed) return;
+    _backendReachable = false;
     notifyListeners();
+    Timer(const Duration(seconds: 4), _connectWebSocket);
+  }
+
+  void _onAlertMessage(dynamic raw) {
+    if (_disposed) return;
+    try {
+      final json = jsonDecode(raw as String) as Map<String, dynamic>;
+      final alert = AlertModel.fromJson(json);
+      if (alerts.any((a) => a.id == alert.id)) return; // already have it from the initial fetch
+      alerts.insert(0, alert);
+      if (alerts.length > 100) alerts.removeLast();
+
+      final notifBody = '${_severityLabel(alert.severity)} severity event at ${alert.location}.';
+      notifications.insert(
+        0,
+        NotificationModel(
+          id: 'N${_idCounter++}',
+          title: alert.type,
+          body: notifBody,
+          time: alert.time,
+          type: NotificationType.alert,
+          icon: alert.icon,
+        ),
+      );
+      if (notifications.length > 60) notifications.removeLast();
+      LocalNotificationService.instance.showAlert(title: alert.type, body: notifBody);
+
+      _backendReachable = true;
+      notifyListeners();
+    } catch (_) {
+      // malformed message from the server; ignore rather than crash the feed
+    }
   }
 
   String _severityLabel(AlertSeverity s) => switch (s) {
@@ -231,6 +190,41 @@ class AppDataStore extends ChangeNotifier {
         AlertSeverity.medium => 'Medium',
         AlertSeverity.low => 'Low',
       };
+
+  Future<void> acknowledgeAlert(String id) async {
+    final a = alerts.firstWhere((a) => a.id == id);
+    a.acknowledged = true;
+    notifyListeners();
+    try {
+      await ApiClient.instance.dio.patch('/api/alerts/$id/acknowledge');
+    } catch (_) {
+      // best-effort; local state already reflects the user's action
+    }
+  }
+
+  Future<void> resolveAlert(String id) async {
+    final a = alerts.firstWhere((a) => a.id == id);
+    a.acknowledged = true;
+    a.resolved = true;
+    notifyListeners();
+    try {
+      await ApiClient.instance.dio.patch('/api/alerts/$id/resolve');
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  Future<void> deleteAlert(String id) async {
+    alerts.removeWhere((a) => a.id == id);
+    notifyListeners();
+    try {
+      await ApiClient.instance.dio.delete('/api/alerts/$id');
+    } catch (_) {
+      // best-effort; already removed locally
+    }
+  }
+
+  Future<void> refreshAlerts() => _loadInitialAlerts();
 
   void markNotificationRead(String id) {
     final n = notifications.firstWhere((n) => n.id == id);
@@ -252,25 +246,61 @@ class AppDataStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void acknowledgeAlert(String id) {
-    final a = alerts.firstWhere((a) => a.id == id);
-    a.acknowledged = true;
-    notifyListeners();
+  Future<void> _loadContacts() async {
+    try {
+      final res = await ApiClient.instance.dio.get('/api/contacts');
+      contacts
+        ..clear()
+        ..addAll((res.data as List).map((j) => EmergencyContact.fromJson(j as Map<String, dynamic>)));
+      notifyListeners();
+    } catch (_) {
+      // stay empty; profile screen offers a manual retry via refreshContacts()
+    }
   }
 
-  void addContact(EmergencyContact contact) {
-    contacts.add(contact);
-    notifyListeners();
+  Future<void> refreshContacts() => _loadContacts();
+
+  Future<void> addContact({required String name, required String relation, required String phone}) async {
+    try {
+      final res = await ApiClient.instance.dio
+          .post('/api/contacts', data: {'name': name, 'relation': relation, 'phone': phone});
+      contacts.add(EmergencyContact.fromJson(res.data as Map<String, dynamic>));
+      notifyListeners();
+    } catch (e) {
+      throw apiErrorMessage(e);
+    }
   }
 
-  void removeContact(String id) {
+  Future<void> removeContact(String id) async {
     contacts.removeWhere((c) => c.id == id);
     notifyListeners();
+    try {
+      await ApiClient.instance.dio.delete('/api/contacts/$id');
+    } catch (_) {
+      // best-effort; already removed locally
+    }
   }
 
-  void setPreference(String key, bool value) {
+  Future<void> _loadPreferences() async {
+    try {
+      final res = await ApiClient.instance.dio.get('/api/preferences');
+      final data = Map<String, dynamic>.from(res.data as Map);
+      preferences.clear();
+      data.forEach((k, v) => preferences[k] = v as bool);
+      notifyListeners();
+    } catch (_) {
+      // keep the local defaults set above
+    }
+  }
+
+  Future<void> setPreference(String key, bool value) async {
     preferences[key] = value;
     notifyListeners();
+    try {
+      await ApiClient.instance.dio.put('/api/preferences', data: {key: value});
+    } catch (_) {
+      // best-effort; local toggle already reflects the user's choice
+    }
   }
 
   void triggerSOS({double? lat, double? lng, required bool reachedBackend, required bool smsOpened}) {
@@ -294,19 +324,14 @@ class AppDataStore extends ChangeNotifier {
         icon: Icons.sos_rounded,
       ),
     );
+    LocalNotificationService.instance.showAlert(title: 'SOS Activated', body: body);
     notifyListeners();
   }
 
   @override
   void dispose() {
-    _liveFeedTimer.cancel();
+    _disposed = true;
+    _channel?.sink.close();
     super.dispose();
   }
-}
-
-class _EventTemplate {
-  final String type;
-  final AlertSeverity severity;
-  final IconData icon;
-  const _EventTemplate(this.type, this.severity, this.icon);
 }

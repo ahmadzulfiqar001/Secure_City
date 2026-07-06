@@ -32,6 +32,12 @@ class DashboardScreen extends StatelessWidget {
 
   void _showAlertInfo(BuildContext context, AlertModel alert) {
     final color = severityColor(alert.severity);
+    final (label, action) = alert.resolved
+        ? ('Close', null)
+        : alert.acknowledged
+            ? ('Resolve', () => store.resolveAlert(alert.id))
+            : ('Acknowledge', () => store.acknowledgeAlert(alert.id));
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -42,10 +48,10 @@ class DashboardScreen extends StatelessWidget {
         subtitle: alert.location,
         status: timeAgo(alert.time),
         statusColor: color,
-        badge: alert.severity.name.toUpperCase(),
-        actionLabel: alert.acknowledged ? 'Close' : 'Acknowledge',
+        badge: alert.resolved ? 'RESOLVED' : alert.severity.name.toUpperCase(),
+        actionLabel: label,
         onAction: () {
-          if (!alert.acknowledged) store.acknowledgeAlert(alert.id);
+          action?.call();
           Navigator.pop(context);
         },
       ),

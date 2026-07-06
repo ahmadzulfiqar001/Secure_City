@@ -49,8 +49,10 @@ class AlertTile extends StatelessWidget {
                           style: GoogleFonts.inter(
                               color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
                     ),
-                    if (alert.acknowledged)
-                      const Icon(Icons.check_circle, color: AppColors.accent, size: 14),
+                    if (alert.resolved)
+                      const Icon(Icons.task_alt, color: AppColors.accent, size: 14)
+                    else if (alert.acknowledged)
+                      const Icon(Icons.check_circle_outline, color: AppColors.textMuted, size: 14),
                   ]),
                   const SizedBox(height: 3),
                   Row(children: [

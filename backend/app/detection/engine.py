@@ -45,6 +45,11 @@ class DetectionEngine(threading.Thread):
         self._prev_gray: np.ndarray | None = None
         self._last_alert_at: dict[str, float] = {}
         self._banner: tuple[str, float] | None = None  # (text, expires_at)
+        self._face_cascade = (
+            cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+            if config.FACE_BLUR_ENABLED
+            else None
+        )
 
     # ── public API (called from FastAPI handlers) ───────────────────
     def latest_jpeg(self) -> bytes:
@@ -123,16 +128,17 @@ class DetectionEngine(threading.Thread):
     def _process_frame(self, frame: np.ndarray) -> None:
         scale = config.PROCESS_WIDTH / frame.shape[1]
         frame = cv2.resize(frame, (config.PROCESS_WIDTH, int(frame.shape[0] * scale)))
-        gray = cv2.GaussianBlur(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+        raw_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(raw_gray, (5, 5), 0)
 
         results = self.model(
             frame,
-            conf=min(config.CONF_PERSON, config.CONF_WEAPON),
-            classes=[config.PERSON_CLASS, *config.WEAPON_CLASSES.keys()],
+            conf=min(config.CONF_PERSON, config.CONF_WEAPON, config.CONF_OBJECT),
+            classes=[config.PERSON_CLASS, *config.WEAPON_CLASSES.keys(), *config.OBJECT_CLASSES.keys()],
             verbose=False,
         )[0]
 
-        person_boxes, weapons = [], []
+        person_boxes, weapons, objects = [], [], []
         for box in results.boxes:
             cls = int(box.cls[0])
             conf = float(box.conf[0])
@@ -141,21 +147,38 @@ class DetectionEngine(threading.Thread):
                 person_boxes.append((x1, y1, x2, y2))
             elif cls in config.WEAPON_CLASSES and conf >= config.CONF_WEAPON:
                 weapons.append((x1, y1, x2, y2, conf, config.WEAPON_CLASSES[cls]))
+            elif cls in config.OBJECT_CLASSES and conf >= config.CONF_OBJECT:
+                objects.append((x1, y1, x2, y2, conf, config.OBJECT_CLASSES[cls]))
 
         persons = self._tracker.update(person_boxes)
         self.person_count = len(persons)
 
-        data = FrameData(frame, gray, self._prev_gray, persons, weapons)
+        # Detection runs on the untouched frame above (blurring first would
+        # hurt accuracy); faces are only masked afterwards, right before this
+        # frame is shown/saved anywhere.
+        self._blur_faces(frame, raw_gray)
+
+        data = FrameData(frame, gray, self._prev_gray, persons, weapons, objects)
         for detector in self._detectors:
             for event in detector.update(data):
                 self._fire_alert(event, frame)
         self._prev_gray = gray
 
-        self._draw_overlays(frame, persons, weapons)
+        self._draw_overlays(frame, persons, weapons, objects)
         ok, jpeg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         if ok:
             with self._frame_lock:
                 self._latest_jpeg = jpeg.tobytes()
+
+    def _blur_faces(self, frame: np.ndarray, gray_for_faces: np.ndarray) -> None:
+        if self._face_cascade is None:
+            return
+        faces = self._face_cascade.detectMultiScale(gray_for_faces, scaleFactor=1.1, minNeighbors=5, minSize=(24, 24))
+        for (x, y, w, h) in faces:
+            roi = frame[y:y + h, x:x + w]
+            if roi.size == 0:
+                continue
+            frame[y:y + h, x:x + w] = cv2.GaussianBlur(roi, (0, 0), sigmaX=15)
 
     def _fire_alert(self, event, frame: np.ndarray) -> None:
         now = time.time()
@@ -170,7 +193,11 @@ class DetectionEngine(threading.Thread):
         self._banner = (f"{event.type.upper()} — {camera['name']}", now + 3.0)
 
     # ── drawing ─────────────────────────────────────────────────────
-    def _draw_overlays(self, frame, persons, weapons) -> None:
+    def _draw_overlays(self, frame, persons, weapons, objects=()) -> None:
+        h, w = frame.shape[:2]
+        zone = np.array([(int(px * w), int(py * h)) for px, py in config.RESTRICTED_ZONE], dtype=np.int32)
+        cv2.polylines(frame, [zone], isClosed=True, color=COLOR_DANGER, thickness=1, lineType=cv2.LINE_AA)
+
         for tid, track in persons.items():
             x1, y1, x2, y2 = (int(v) for v in track.box)
             running = track.speed() >= config.RUN_SPEED and len(track.history) >= 5
@@ -185,6 +212,12 @@ class DetectionEngine(threading.Thread):
             cv2.rectangle(frame, (x1, y1), (x2, y2), COLOR_DANGER, 2)
             cv2.putText(frame, f"WEAPON: {label} {conf:.2f}", (x1, max(y1 - 6, 12)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLOR_DANGER, 2, cv2.LINE_AA)
+
+        for x1, y1, x2, y2, conf, label in objects:
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), COLOR_ACCENT, 1)
+            cv2.putText(frame, label.upper(), (x1, max(y1 - 6, 12)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_ACCENT, 1, cv2.LINE_AA)
 
         self._draw_hud(frame)
 

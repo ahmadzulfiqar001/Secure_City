@@ -30,6 +30,45 @@ PANIC_RUNNERS = 3            # simultaneous runners => panic movement
 FIGHT_MOTION = 26.0          # mean frame-diff intensity inside a close pair region
 FIGHT_FRAMES = 5             # consecutive high-motion frames => fight
 
+# Fire/smoke are classical HSV-color heuristics, not a trained model — no
+# "fire"/"smoke" class exists in COCO/YOLOv8n. Prone to false positives on
+# orange objects (fire) or fog/pale walls (smoke); good enough to demo the
+# alert pipeline, not a substitute for a trained fire-detection model.
+FIRE_HSV_LOWER = (5, 80, 150)      # orange/red/yellow, bright + saturated
+FIRE_HSV_UPPER = (30, 255, 255)
+FIRE_AREA_RATIO = 0.02             # fraction of frame that must match
+FIRE_FRAMES = 6                    # consecutive matching frames => alert
+
+SMOKE_HSV_LOWER = (0, 0, 90)       # low-saturation grey/white haze
+SMOKE_HSV_UPPER = (180, 45, 200)
+SMOKE_AREA_RATIO = 0.06
+SMOKE_FRAMES = 10
+
+# Fall detection: a standing person's box is taller than it is wide; a
+# fallen one flips that. Heuristic on box shape, not pose estimation.
+FALL_ASPECT_RATIO = 1.3      # width / height above this => lying down
+FALL_FRAMES = 6
+
+# Restricted zone: fractional (0-1) frame coordinates, top-left origin.
+# Demo default is the top-left ~28%x35% of frame — reposition per camera.
+RESTRICTED_ZONE = [(0.0, 0.0), (0.28, 0.0), (0.28, 0.35), (0.0, 0.35)]
+ZONE_FRAMES = 3               # consecutive frames with someone inside => alert
+
+# Abandoned object: COCO classes that plausibly are "a bag someone left".
+OBJECT_CLASSES = {24: "backpack", 26: "handbag", 28: "suitcase"}
+CONF_OBJECT = 0.40
+ABANDON_SECONDS = 15.0        # stationary+unattended duration => alert
+ABANDON_MOVE_RADIUS = 25.0    # px drift still counted as "stationary"
+ABANDON_PERSON_RADIUS = 140.0 # px — a person this close counts as "attending" it
+
+# Loitering: a person who barely moves for a long stretch.
+LOITER_SECONDS = 20.0
+LOITER_MOVE_RADIUS = 60.0
+
+# Face blur: real-time privacy masking via OpenCV's built-in Haar cascade
+# (no custom model needed). Applied to the live stream and saved snapshots.
+FACE_BLUR_ENABLED = True
+
 ALERT_COOLDOWN = 20.0        # seconds between repeated alerts of the same type
 
 # ── Cameras (must stay in sync with the Flutter app's demo pins) ───

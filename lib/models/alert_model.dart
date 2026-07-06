@@ -18,8 +18,12 @@ IconData iconForAlertType(String type) {
   if (t.contains('weapon') || t.contains('gun') || t.contains('knife')) return Icons.warning_amber_rounded;
   if (t.contains('crowd') || t.contains('overcrowd')) return Icons.groups_outlined;
   if (t.contains('panic') || t.contains('running')) return Icons.directions_run;
-  if (t.contains('fire') || t.contains('smoke')) return Icons.local_fire_department_outlined;
+  if (t.contains('fire')) return Icons.local_fire_department_outlined;
+  if (t.contains('smoke')) return Icons.cloud_outlined;
   if (t.contains('fall')) return Icons.elderly_outlined;
+  if (t.contains('restricted') || t.contains('intrusion')) return Icons.block_outlined;
+  if (t.contains('abandoned')) return Icons.work_outline;
+  if (t.contains('loiter')) return Icons.hourglass_bottom_outlined;
   return Icons.visibility_outlined;
 }
 

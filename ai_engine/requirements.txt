@@ -1,0 +1,8 @@
+ultralytics>=8.3
+opencv-python>=4.9,<5
+supervision>=0.24
+lap>=0.5.12
+numpy>=1.26
+requests>=2.31
+python-dotenv>=1.0
+roboflow>=1.1        # training/train_weapon.py, training/train_fire_smoke.py only
